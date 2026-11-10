@@ -42,4 +42,10 @@ where
             .par_iter_mut()
             .for_each(|child| child.par_deduplicate_hardlinks(&sub_hardlink_info))
     }
+
+    /// Reduce the size of the root only.
+    #[cfg_attr(not(unix), expect(unused))]
+    pub(crate) fn subtract_root_size(&mut self, size: Size) {
+        self.size -= size;
+    }
 }

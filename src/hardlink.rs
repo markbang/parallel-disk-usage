@@ -3,6 +3,10 @@
 pub mod aware;
 #[cfg(unix)]
 pub use aware::HardlinkAware;
+#[cfg(unix)]
+pub mod counting;
+#[cfg(unix)]
+pub use counting::{HardlinkAwareOrCounting, HardlinkCounting};
 
 pub mod deduplicate;
 pub mod hardlink_list;

@@ -290,7 +290,7 @@ impl App {
         {
             type HardlinksHandler: hardlink::RecordHardlinks<Self::Size, Self::Reporter>
                 + sub::HardlinkSubroutines<Self::Size>;
-            fn create_hardlinks_handler() -> Self::HardlinksHandler;
+            fn create_hardlinks_handler(root_only: bool) -> Self::HardlinksHandler;
         }
 
         impl<const REPORT_PROGRESS: bool, SizeGetter> CreateHardlinksHandler<false, REPORT_PROGRESS>
@@ -301,7 +301,7 @@ impl App {
         {
             type HardlinksHandler = hardlink::HardlinkIgnorant;
             #[inline]
-            fn create_hardlinks_handler() -> Self::HardlinksHandler {
+            fn create_hardlinks_handler(_: bool) -> Self::HardlinksHandler {
                 hardlink::HardlinkIgnorant
             }
         }
@@ -314,10 +314,10 @@ impl App {
             Self::Size: Send + Sync + 'static,
             Self::Reporter: crate::reporter::Reporter<Self::Size>,
         {
-            type HardlinksHandler = hardlink::HardlinkAware<Self::Size>;
+            type HardlinksHandler = hardlink::HardlinkAwareOrCounting<Self::Size>;
             #[inline]
-            fn create_hardlinks_handler() -> Self::HardlinksHandler {
-                hardlink::HardlinkAware::new()
+            fn create_hardlinks_handler(root_only: bool) -> Self::HardlinksHandler {
+                hardlink::HardlinkAwareOrCounting::new(root_only)
             }
         }
 
@@ -348,7 +348,10 @@ impl App {
                     direction: Direction::from_top_down(top_down),
                     bar_alignment: BarAlignment::from_align_right(align_right),
                     size_getter: <$size_getter as GetSizeUtils>::INSTANCE,
-                    hardlinks_handler: <$size_getter as CreateHardlinksHandler<{ cfg!(unix) && $hardlinks }, $progress>>::create_hardlinks_handler(),
+                    // Link paths are only needed to deduplicate below the root or to report shared links.
+                    hardlinks_handler: <$size_getter as CreateHardlinksHandler<{ cfg!(unix) && $hardlinks }, $progress>>::create_hardlinks_handler(
+                        json_output && omit_json_shared_details && omit_json_shared_summary && max_depth.get() == 1,
+                    ),
                     device_boundary: DeviceBoundary::from_one_file_system(one_file_system),
                     reporter: <$size_getter as CreateReporter<$progress>>::create_reporter(report_error),
                     bytes_format: <$size_getter as GetSizeUtils>::formatter(bytes_format),

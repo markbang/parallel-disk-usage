@@ -1,7 +1,11 @@
 use super::HardlinkSubroutines;
 use crate::{
-    data_tree::DataTree, hardlink::HardlinkAware, json_data::JsonShared,
-    os_string_display::OsStringDisplay, runtime_error::RuntimeError, size,
+    data_tree::DataTree,
+    hardlink::{HardlinkAware, HardlinkAwareOrCounting},
+    json_data::JsonShared,
+    os_string_display::OsStringDisplay,
+    runtime_error::RuntimeError,
+    size,
 };
 use pipe_trait::Pipe;
 
@@ -29,5 +33,32 @@ where
         let summary = report.summarize().pipe(Some);
         let details = report.into_reflection().pipe(Some);
         Ok(Some(JsonShared { details, summary }))
+    }
+}
+
+impl<Size> HardlinkSubroutines<Size> for HardlinkAwareOrCounting<Size>
+where
+    DataTree<OsStringDisplay, Size>: Send,
+    Size: size::Size + Sync,
+{
+    fn convert_error(error: Self::Error) -> RuntimeError {
+        match error {}
+    }
+
+    fn print_report(
+        report: Self::Report,
+        bytes_format: Size::DisplayFormat,
+    ) -> Result<(), RuntimeError> {
+        match report {
+            Some(report) => HardlinkAware::print_report(report, bytes_format),
+            None => Ok(()),
+        }
+    }
+
+    fn json_report(report: Self::Report) -> Result<Option<JsonShared<Size>>, RuntimeError> {
+        match report {
+            Some(report) => HardlinkAware::json_report(report),
+            None => Ok(None),
+        }
     }
 }
